@@ -29,7 +29,9 @@ jobs:
         run: cargo check --workspace --all-targets
 
       - name: cargo test（全 workspace）
-        run: cargo test --workspace --release
+        # test_watch / test_urafile 依赖真机环境（LOCALAPPDATA / 小黑板数据目录），
+        # Linux CI 无法运行，跳过；模拟器核心测试（umasim）全部保留
+        run: cargo test --workspace --release -- --skip tests::test_watch --skip tests::test_urafile
 
       - name: 构建发布二进制
         run: cargo build --release -p umaai
