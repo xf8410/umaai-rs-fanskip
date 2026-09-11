@@ -1,0 +1,42 @@
+name: build-and-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: cargo check（全 workspace）
+        run: cargo check --workspace --all-targets
+
+      - name: cargo test（全 workspace）
+        run: cargo test --workspace --release
+
+      - name: 构建发布二进制
+        run: cargo build --release -p umaai
+
+      - name: 上传二进制
+        uses: actions/upload-artifact@v4
+        with:
+          name: umaai-fanskip-linux
+          path: target/release/umaai
+          retention-days: 30
