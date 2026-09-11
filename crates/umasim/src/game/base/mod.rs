@@ -49,7 +49,18 @@ pub struct BaseGame {
     pub card_type_count: [i32; 7],
     /// 友人事件 ID 集合（base/onsen 从 global_events.friend_events 派生；
     /// ramen 在 `RamenGame::newgame` 中额外合并 `RAMENDATA.friend_events`）
-    pub friend_event_ids: HashSet<u32>
+    pub friend_event_ids: HashSet<u32>,
+    /// 粉丝跳过：跳过自选比赛达标判定（fanskip 仓库新增）
+    ///
+    /// `true` 时 [`Self::check_free_race`] 不再按"区间内已赛场次"判定育成失败。
+    /// 背景：真机游戏对自选比赛的真实判定是粉丝数，而本模拟模型只有场次位图——
+    /// 当玩家种马继承粉丝基数高/已自行打满粉丝时，游戏不会失败，但模拟仍按
+    /// 场次缺口判死，导致 MCTS 在区间末尾被迫浪费回合打多余的自选比赛。
+    ///
+    /// 默认 `false`（严格场次判定，模拟器/基准行为不变）。仅真机 AI 路径在
+    /// `game_config.toml` 配置 `ramen_skip_free_race = true` 时置位——由用户
+    /// 自行保证粉丝达标（上游文档："可以自行不打"）。
+    pub skip_free_race_check: bool
 }
 
 impl BaseGame {
@@ -147,7 +158,9 @@ impl BaseGame {
             card_type_count,
             // 从 global_events().friend_events.values() 派生友人事件 ID
             // （base/onsen 用；ramen 在 RamenGame::newgame 中额外合并 RAMENDATA.friend_events）
-            friend_event_ids: global_events().friend_events.values().map(|e| e.id).collect()
+            friend_event_ids: global_events().friend_events.values().map(|e| e.id).collect(),
+            // 模拟器/newgame 路径默认严格判定；真机路径由 main.rs 按 game_config 注入
+            skip_free_race_check: false
         })
     }
 
@@ -266,7 +279,16 @@ impl BaseGame {
     }
 
     /// 检测自选比赛是否达标
+    ///
+    /// fanskip 修改：`skip_free_race_check == true` 时直接通过（粉丝跳过模式）。
+    /// 真实游戏按粉丝数判定自选比赛是否过关；玩家粉丝已达标时（种马继承/已自行
+    /// 比赛），即使场次位图不足游戏也不会失败。此时跳过判定可避免 MCTS 为躲避
+    /// 模拟中的"假失败"而被迫打多余比赛。默认 `false` 保持原严格行为。
     pub fn check_free_race(&self) -> bool {
+        if self.skip_free_race_check {
+            diag!("粉丝跳过模式：跳过自选比赛达标判定（skip_free_race_check = true）");
+            return true;
+        }
         if let Ok(data) = self.uma.get_data() {
             for free_race in &data.free_races {
                 // 只在结束回合+1时检测

@@ -623,7 +623,15 @@ pub struct GameConfig {
     ///
     /// 例如 `[[10, 12, 14]]`：第3年固定选 [10,12,14]
     #[serde(default)]
-    pub ramen_region_fixed: Option<Vec<[usize; 3]>>
+    pub ramen_region_fixed: Option<Vec<[usize; 3]>>,
+    /// 粉丝跳过：真机 AI 跳过自选比赛达标判定（fanskip 仓库新增，仅真机路径生效）
+    ///
+    /// `true` 时真机 AI 不再按"区间内已赛场次"强制自选比赛——适用于种马继承
+    /// 粉丝基数高、进入粉丝数回合区间前粉丝已达标的情况（此时游戏不会因少打
+    /// 比赛而失败）。**由用户自行保证粉丝达标**；模拟器/bench 判定不受影响，
+    /// 基准行为不变。默认 `false`。
+    #[serde(default)]
+    pub ramen_skip_free_race: bool
 }
 
 fn default_mcts_turn_bonus() -> i32 {
@@ -674,7 +682,8 @@ impl GameConfig {
             pt_favor_rate: default_pt_favor_rate(),
             race_grades: default_race_grades(),
             ramen_region_strategy: RamenRegionStrategy::default(),
-            ramen_region_fixed: None
+            ramen_region_fixed: None,
+            ramen_skip_free_race: false
         }
     }
 

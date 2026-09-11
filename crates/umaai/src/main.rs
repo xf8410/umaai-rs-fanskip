@@ -241,7 +241,9 @@ async fn main_guard() -> Result<()> {
                     game, &mut trainer, &sink, &mut luck_tracker, &mut rng, json_mode, &emit_info, &game_config,
                 )?;
             }
-            Ok(crate::protocol::ParsedGame::Ramen { game, single_mode_chara_id }) => {
+            Ok(crate::protocol::ParsedGame::Ramen { mut game, single_mode_chara_id }) => {
+                // fanskip：真机路径注入粉丝跳过开关（模拟器/bench 不受影响）
+                game.base.skip_free_race_check = game_config.ramen_skip_free_race;
                 ramen::process_ramen(
                     game, single_mode_chara_id, &ramen_trainer, &reason_slot, &sink, &mut luck_tracker, &mut rng,
                     json_mode, &emit_info,
